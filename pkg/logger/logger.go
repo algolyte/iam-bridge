@@ -1,14 +1,10 @@
 package logger
 
 import (
-	"github.com/google/wire"
 	"github.com/zahidhasanpapon/iam-bridge/internal/config"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
-
-// ProviderSet is a provider set for wire
-var ProviderSet = wire.NewSet(NewLogger)
 
 type Logger interface {
 	Info(args ...interface{})
@@ -23,27 +19,27 @@ type zapLogger struct {
 	sugaredLogger *zap.SugaredLogger
 }
 
-func NewLogger(cfg *config.Config) (Logger, error) {
-	config := zap.NewProductionConfig()
+func NewLogger(cfg *config.LogConfig) (Logger, error) {
+	logConfig := zap.NewProductionConfig()
 
-	// Set log level based on config
-	switch cfg.LogLevel {
+	// Set log level based on logConfig
+	switch cfg.Level {
 	case "debug":
-		config.Level = zap.NewAtomicLevelAt(zap.DebugLevel)
+		logConfig.Level = zap.NewAtomicLevelAt(zap.DebugLevel)
 	case "info":
-		config.Level = zap.NewAtomicLevelAt(zap.InfoLevel)
+		logConfig.Level = zap.NewAtomicLevelAt(zap.InfoLevel)
 	case "warn":
-		config.Level = zap.NewAtomicLevelAt(zap.WarnLevel)
+		logConfig.Level = zap.NewAtomicLevelAt(zap.WarnLevel)
 	case "error":
-		config.Level = zap.NewAtomicLevelAt(zap.ErrorLevel)
+		logConfig.Level = zap.NewAtomicLevelAt(zap.ErrorLevel)
 	default:
-		config.Level = zap.NewAtomicLevelAt(zap.InfoLevel)
+		logConfig.Level = zap.NewAtomicLevelAt(zap.InfoLevel)
 	}
 
-	config.EncoderConfig.TimeKey = "timestamp"
-	config.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
+	logConfig.EncoderConfig.TimeKey = "timestamp"
+	logConfig.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
 
-	logger, err := config.Build()
+	logger, err := logConfig.Build()
 	if err != nil {
 		return nil, err
 	}
@@ -53,7 +49,6 @@ func NewLogger(cfg *config.Config) (Logger, error) {
 	}, nil
 }
 
-// Logger interface implementations
 func (l *zapLogger) Info(args ...interface{}) {
 	l.sugaredLogger.Info(args...)
 }

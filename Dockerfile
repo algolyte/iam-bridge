@@ -1,12 +1,10 @@
 # Build stage
-FROM golang:1.23-alpine AS builder
+FROM golang:1.21-alpine AS builder
 
 # Install build dependencies
-RUN apk add --no-cache gcc musl-dev git
+RUN apk add --no-cache gcc musl-dev
 
-# Install Wire
-RUN go install github.com/google/wire/cmd/wire@latest
-
+# Set working directory
 WORKDIR /app
 
 # Copy go mod and sum files
@@ -18,26 +16,24 @@ RUN go mod download
 # Copy source code
 COPY . .
 
-# Generate wire_gen.go
-RUN wire ./internal/di
-
 # Build the application
-RUN CGO_ENABLED=0 GOOS=linux go build -a -o main ./cmd/api
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o goiam-bridge ./cmd/main.go
 
 # Final stage
 FROM alpine:3.18
 
-WORKDIR /app
-
-# Copy binary from builder
-COPY --from=builder /app/main .
-COPY --from=builder /app/config ./config
-
-# Install CA certificates
+# Install ca-certificates for HTTPS requests
 RUN apk --no-cache add ca-certificates
 
-# Create non-root user
-RUN adduser -D -g '' appuser
-USER appuser
+WORKDIR /app
 
-CMD ["./main"]
+# Copy the binary from builder
+COPY --from=builder /app/goiam-bridge .
+# Copy configs
+COPY --from=builder /app/config ./config
+
+# Expose port
+EXPOSE 8080
+
+# Set the binary as the entrypoint
+ENTRYPOINT ["./goiam-bridge"]

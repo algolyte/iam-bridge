@@ -1,0 +1,35 @@
+app:
+  name: iam-bridge
+  environment: development
+  port: 8080
+  debug: true
+
+iam:
+  provider: keycloak
+  keycloak:
+    base_url:
+    realm:
+    client_id:
+    client_secret:
+
+security:
+  cors:
+    allowed_origins:
+      - "http://localhost:3000"
+      - "http://localhost:8080"
+    allowed_methods:
+      - "GET"
+      - "POST"
+      - "PUT"
+      - "DELETE"
+      - "OPTIONS"
+    allowed_headers:
+      - "Authorization"
+      - "Content-Type"
+  rate_limit:
+    enabled: true
+    requests_per_second: 10
+
+logging:
+  level: debug
+  format: json
