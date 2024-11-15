@@ -3,8 +3,11 @@ package config
 import (
 	"errors"
 	"fmt"
-	"github.com/spf13/viper"
+	"log"
 	"strings"
+
+	"github.com/joho/godotenv"
+	"github.com/spf13/viper"
 )
 
 // Config holds all configuration for our program
@@ -40,8 +43,8 @@ type CORSConfig struct {
 
 // RateLimitConfig holds rate limiting configuration
 type RateLimitConfig struct {
-	Enabled          bool `mapstructure:"enabled"`
-	RequestPerSecond int  `mapstructure:"request_per_second"`
+	Enabled           bool `mapstructure:"enabled"`
+	RequestsPerSecond int  `mapstructure:"requests_per_second"`
 }
 
 // LogConfig holds logging-related configuration
@@ -52,8 +55,8 @@ type LogConfig struct {
 
 // SecurityConfig holds security-related configuration
 type SecurityConfig struct {
-	CORS            CORSConfig      `mapstructure:"cors"`
-	RateLimitConfig RateLimitConfig `mapstructure:"rate_limit"`
+	CORS      CORSConfig      `mapstructure:"cors"`
+	RateLimit RateLimitConfig `mapstructure:"rate_limit"`
 }
 
 // IAMConfig holds the configuration for IAM providers
@@ -64,13 +67,18 @@ type IAMConfig struct {
 
 // LoadConfig reads configuration from file or environment variables
 func LoadConfig(path string) (*Config, error) {
+	// Load the .env file
+	err := godotenv.Load(".env")
+	if err != nil {
+		log.Printf("No .env file found or error reading .env file: %v", err)
+	}
+
+	// Set up Viper
 	viper.AddConfigPath(path)
 	viper.SetConfigName("config")
 	viper.SetConfigType("yaml")
 
-	viper.AutomaticEnv()
-	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
-
+	// Read the config file
 	if err := viper.ReadInConfig(); err != nil {
 		var configFileNotFoundError viper.ConfigFileNotFoundError
 		if errors.As(err, &configFileNotFoundError) {
@@ -79,6 +87,11 @@ func LoadConfig(path string) (*Config, error) {
 		return nil, fmt.Errorf("error reading config file: %w", err)
 	}
 
+	// Enable Viper to read Environment Variables
+	viper.AutomaticEnv()
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+
+	// Unmarshal the config into the Config struct
 	var config Config
 	if err := viper.Unmarshal(&config); err != nil {
 		return nil, fmt.Errorf("error unmarshalling config: %w", err)

@@ -3,6 +3,8 @@ package server
 import (
 	"context"
 	"fmt"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 	"github.com/zahidhasanpapon/iam-bridge/internal/config"
 	"github.com/zahidhasanpapon/iam-bridge/internal/middleware"
 	"github.com/zahidhasanpapon/iam-bridge/internal/provider"
@@ -67,6 +69,9 @@ func NewServer() (*Server, error) {
 
 // setupMiddleware configures all middleware for the server
 func (s *Server) setupMiddleware() {
+	// Swagger endpoint
+	s.router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	
 	// Add basic middleware
 	s.router.Use(
 		middleware.RequestIDMiddleware(),
@@ -77,7 +82,7 @@ func (s *Server) setupMiddleware() {
 	)
 
 	// Add rate limiting if enabled
-	if s.config.Security.RateLimitConfig.Enabled {
+	if s.config.Security.RateLimit.Enabled {
 		// TODO: Implement rate limiting middleware
 	}
 }
@@ -85,6 +90,13 @@ func (s *Server) setupMiddleware() {
 // setupRoutes configures all routes for the server
 func (s *Server) setupRoutes() {
 	// Health check
+	// @Summary Health check
+	// @Description Checks the health of the service
+	// @Tags Health
+	// @Produce json
+	// @Success 200 {object} map[string]interface{}
+	// @Failure 503 {object} map[string]interface{}
+	// @Router /health [get]
 	s.router.GET("/health", s.handleHealthCheck)
 
 	// API routes
@@ -93,19 +105,98 @@ func (s *Server) setupRoutes() {
 		// Authentication routes
 		auth := api.Group("/auth")
 		{
+			// @Summary Login
+			// @Description Authenticates a user and provides a token
+			// @Tags Authentication
+			// @Accept json
+			// @Produce json
+			// @Param credentials body struct{Username string; Password string} true "Login credentials"
+			// @Success 200 {object} map[string]string
+			// @Failure 400 {object} map[string]interface{}
+			// @Router /api/v1/auth/login [post]
 			auth.POST("/login", s.handleLogin)
+
+			// @Summary Logout
+			// @Description Logs out a user by invalidating their token
+			// @Tags Authentication
+			// @Security BearerAuth
+			// @Success 204
+			// @Failure 400 {object} map[string]interface{}
+			// @Router /api/v1/auth/logout [post]
 			auth.POST("/logout", s.handleLogout)
+
+			// @Summary Refresh Token
+			// @Description Refreshes an access token using a refresh token
+			// @Tags Authentication
+			// @Accept json
+			// @Produce json
+			// @Param refreshToken body struct{RefreshToken string} true "Refresh token"
+			// @Success 200 {object} map[string]string
+			// @Failure 400 {object} map[string]interface{}
+			// @Router /api/v1/auth/refresh [post]
 			auth.POST("/refresh", s.handleRefreshToken)
+
+			// @Summary Validate Token
+			// @Description Validates the provided token
+			// @Tags Authentication
+			// @Security BearerAuth
+			// @Success 200 {object} map[string]interface{}
+			// @Failure 400 {object} map[string]interface{}
+			// @Router /api/v1/auth/validate [get]
 			auth.GET("/validate", s.handleValidateToken)
 		}
 
 		// User management routes
 		users := api.Group("/users")
 		{
+			// @Summary Get User Info
+			// @Description Retrieves information about a specific user
+			// @Tags Users
+			// @Param id path string true "User ID"
+			// @Produce json
+			// @Success 200 {object} map[string]interface{}
+			// @Failure 400 {object} map[string]interface{}
+			// @Router /api/v1/users/{id} [get]
 			users.GET("/:id", s.handleGetUserInfo)
+
+			// @Summary Update User Info
+			// @Description Updates the information of a specific user
+			// @Tags Users
+			// @Param id path string true "User ID"
+			// @Param userInfo body struct{...} true "User information payload"
+			// @Success 204
+			// @Failure 400 {object} map[string]interface{}
+			// @Router /api/v1/users/{id} [put]
 			users.PUT("/:id", s.handleUpdateUserInfo)
+
+			// @Summary Assign Role
+			// @Description Assigns a role to a specific user
+			// @Tags Users
+			// @Param id path string true "User ID"
+			// @Param role body struct{Role string} true "Role payload"
+			// @Success 204
+			// @Failure 400 {object} map[string]interface{}
+			// @Router /api/v1/users/{id}/roles [post]
 			users.POST("/:id/roles", s.handleAssignRole)
+
+			// @Summary Remove Role
+			// @Description Removes a role from a specific user
+			// @Tags Users
+			// @Param id path string true "User ID"
+			// @Param role path string true "Role"
+			// @Success 204
+			// @Failure 400 {object} map[string]interface{}
+			// @Router /api/v1/users/{id}/roles/{role} [delete]
 			users.DELETE("/:id/roles/:role", s.handleRemoveRole)
+
+			// @Summary Get User Roles
+			// @Description Retrieves the roles of a specific user
+			// @Tags Users
+			// @Param id path string true "User ID"
+			// @Produce json
+			// @Success 200 {object} map[string]interface{}
+			// @Failure 400 {object} map[string]interface{}
+			// @Router /api/v1/users/{id}/roles [get]
 			users.GET("/:id/roles", s.handleGetUserRoles)
 		}
 	}
